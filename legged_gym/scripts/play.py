@@ -6,10 +6,26 @@ from legged_gym import LEGGED_GYM_ROOT_DIR
 
 import isaacgym
 from legged_gym.envs import *
-from legged_gym.utils import  get_args, export_policy_as_jit, task_registry, Logger
+from legged_gym.utils import  get_args, export_policy_as_jit, export_policy_as_onnx, task_registry, Logger
 
 import numpy as np
 import torch
+import onnxruntime as ort
+
+onnx_model_path = '/home/naliseas-workstation/Documents/haitong/unitree_rl_gym/logs/models/policy_50000.onnx'
+session = ort.InferenceSession(onnx_model_path)
+input_name = session.get_inputs()[0].name
+
+def get_action(input_data):
+
+    if not isinstance(input_data, np.ndarray):
+        raise ValueError("Input data must be a numpy array")
+
+    # Run the model on the input data
+    output = session.run(None, {input_name: input_data})
+
+    # Return the results
+    return output[0]
 
 
 def play(args):
@@ -22,6 +38,10 @@ def play(args):
     env_cfg.noise.add_noise = False
     env_cfg.domain_rand.randomize_friction = False
     env_cfg.domain_rand.push_robots = False
+    env_cfg.commands.ranges.lin_vel_x = [0.5, 0.5]
+    env_cfg.commands.ranges.lin_vel_y = [0.0, 0.0]
+    env_cfg.commands.ranges.ang_vel_yaw = [0.0, 0.0]
+    env_cfg.commands.ranges.heading = [0.0, 0.0]
 
     env_cfg.env.test = True
 
@@ -37,10 +57,15 @@ def play(args):
     if EXPORT_POLICY:
         path = os.path.join(LEGGED_GYM_ROOT_DIR, 'logs', train_cfg.runner.experiment_name, 'exported', 'policies')
         export_policy_as_jit(ppo_runner.alg.actor_critic, path)
+        # path = os.path.join(LEGGED_GYM_ROOT_DIR, 'logs', train_cfg.runner.experiment_name, 'exported', 'policies')
+        export_policy_as_onnx(ppo_runner.alg.actor_critic, path)
         print('Exported policy as jit script to: ', path)
 
     for i in range(10*int(env.max_episode_length)):
         actions = policy(obs.detach())
+        # actions = get_action(obs.detach().cpu().numpy())#  / 0.25
+        actions = torch.zeros_like(actions)
+        print(obs[:, 48:])
         obs, _, rews, dones, infos = env.step(actions.detach())
 
 if __name__ == '__main__':

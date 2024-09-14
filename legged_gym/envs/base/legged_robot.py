@@ -181,9 +181,11 @@ class LeggedRobot(BaseTask):
                                     self.base_ang_vel  * self.obs_scales.ang_vel,
                                     self.projected_gravity,
                                     self.commands[:, :3] * self.commands_scale,
-                                    (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos,
+                                    (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos, # 
                                     self.dof_vel * self.obs_scales.dof_vel,
-                                    self.actions
+                                    self.actions,
+                                    # self._reward_feet_contact_forces
+                                    self.contact_forces[:, self.feet_indices, -1]
                                     ),dim=-1)
         # add perceptive inputs if not blind
         # add noise if needed
