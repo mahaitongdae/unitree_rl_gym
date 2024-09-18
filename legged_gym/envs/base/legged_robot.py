@@ -173,6 +173,9 @@ class LeggedRobot(BaseTask):
             rew = self._reward_termination() * self.reward_scales["termination"]
             self.rew_buf += rew
             self.episode_sums["termination"] += rew
+
+    def get_contact(self):
+        return self.contact_forces[:, self.feet_indices, -1] > 1
     
     def compute_observations(self):
         """ Computes observations
@@ -184,8 +187,8 @@ class LeggedRobot(BaseTask):
                                     (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos, # 
                                     self.dof_vel * self.obs_scales.dof_vel,
                                     self.actions,
+                                    self.contact_forces[:, self.feet_indices, -1] > 1
                                     # self._reward_feet_contact_forces
-                                    self.contact_forces[:, self.feet_indices, -1]
                                     ),dim=-1)
         # add perceptive inputs if not blind
         # add noise if needed
@@ -408,6 +411,7 @@ class LeggedRobot(BaseTask):
         noise_vec[12:12+self.num_actions] = noise_scales.dof_pos * noise_level * self.obs_scales.dof_pos
         noise_vec[12+self.num_actions:12+2*self.num_actions] = noise_scales.dof_vel * noise_level * self.obs_scales.dof_vel
         noise_vec[12+2*self.num_actions:12+3*self.num_actions] = 0. # previous actions
+        noise_vec[12+3*self.num_actions:12+3*self.num_actions+4] = 0.
 
         return noise_vec
 
